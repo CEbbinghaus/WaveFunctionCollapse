@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<OutDir>$(SolutionDir)build/lib</OutDir>
 		<TargetFramework>netstandard2.0</TargetFramework>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 </Project>
-
-<!-- <BaseIntermediateOutputPath>$(SolutionDir)__tmp/Wfc</BaseIntermediateOutputPath> -->
