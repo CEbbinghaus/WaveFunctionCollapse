@@ -1,13 +1,29 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 
 namespace wfc {
-    class Indeterminant {
-		List<int> Possibilities;
+    class Indeterminant{
+		List<int> possibilities;
+		int? determinant = null;
 
-		int? determinant;
+		public int[] Possibilities{
+			get{
+				if(determinant != null)
+					return new int[]{(int)determinant};
+				return possibilities.ToArray();
+			}
+		}
 
 		(int x, int y) position;
+
+		public int GetDeterminant{
+			get{
+				if(determinant == null)
+					throw new Exception("Indeterminant wasn't collapsed before Field was Finalized");
+				return determinant ?? -1;
+			}
+		}
 
 		public (int x, int y) Position{
 			get{
@@ -19,7 +35,7 @@ namespace wfc {
 			get{
 				if(Determinant)
 					return -1;
-				return Possibilities.Count;
+				return possibilities.Count;
 			}
 		}
 
@@ -29,20 +45,48 @@ namespace wfc {
 			}
 		}
 
-		public Indeterminant(int[] possibilities, (int x, int y) pos){
-			position = pos;
-			this.Possibilities = new List<int>(possibilities);
-		} 
-
-		public void RemovePossibility(int possibility){
-			Possibilities.Remove(possibility);
-			if(Possibilities.Count == 1){
-				determinant = Possibilities[0];
+		void CheckDetermined(){
+			if(possibilities.Count == 1){
+				determinant = possibilities.Pop();
 			}
 		}
 
+		public float ScaledEntropy(int possibilities){
+			return Entropy / possibilities;
+		}
+
+		public Indeterminant(int[] possibilities, (int x, int y) pos){
+			position = pos;
+			this.possibilities = new List<int>(possibilities);
+		} 
+
+		public void SetPossibilities(int[] newPossibilities){
+			possibilities = new List<int>(newPossibilities);
+			CheckDetermined();
+		}
+
+		public bool ConstrainPossibilities(int[] contrained){
+			var diff = possibilities.Except(contrained).ToArray();
+			if(diff.Length > 0){
+				possibilities = possibilities.Intersect(contrained).ToList();
+				CheckDetermined();
+				return true;
+			}
+			return false;
+		}
+
+		public void Determine(int result){
+			possibilities.Clear();
+			determinant = result;
+		}
+
+		public void RemovePossibility(int possibility){
+			possibilities.Remove(possibility);
+			CheckDetermined();
+		}
+
 		public override string ToString(){
-			return "Works";
+			return $"Ø({position.x}, {position.y})[{string.Join(", ", Possibilities)}]";
 		}
 	}
 }

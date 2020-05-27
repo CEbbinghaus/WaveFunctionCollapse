@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace wfc{
 	class IndeterminationField{
@@ -64,6 +66,14 @@ namespace wfc{
 			for(int x = 0; x < width; ++x){
 				for(int y = 0; y < height; ++y){
 					f((x, y), field[x, y]);
+				}
+			}
+		}
+	
+		public IEnumerator<Indeterminant> GetEnumerator(){
+			for(int x = 0; x < width; ++x){
+				for(int y = 0; y < height; ++y){
+					yield return field[x, y];
 				}
 			}
 		}
