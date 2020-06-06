@@ -3,15 +3,14 @@ using System.Linq;
 using System.Collections.Generic;
 
 namespace wfc {
-    class Indeterminant<T> where T: IComparable<T>{
+    public class Indeterminant<T> where T: struct, IConvertible{
 		List<T> possibilities;
-		T determinant;
-		bool determined = false;
+		T? determinant = null;
 
 		public T[] Possibilities{
 			get{
-				if(determined)
-					return new T[]{determinant};
+				if(determinant != null)
+					return new T[]{(T)determinant};
 				return possibilities.ToArray();
 			}
 		}
@@ -20,9 +19,9 @@ namespace wfc {
 
 		public T GetDeterminant{
 			get{
-				if(!determined)
+				if(determinant == null)
 					throw new Exception("Indeterminant wasn't collapsed before Field was Finalized");
-				return determinant;
+				return (T)determinant;
 			}
 		}
 
@@ -42,14 +41,13 @@ namespace wfc {
 
 		public bool Determined{
 			get{
-				return determined;
+				return determinant != null;
 			}
 		}
 
 		void CheckDetermined(){
 			if(possibilities.Count == 1){
 				determinant = possibilities.Pop();
-				determined = true;
 			}
 		}
 
@@ -82,7 +80,6 @@ namespace wfc {
 		public void Determine(T result){
 			possibilities.Clear();
 			determinant = result;
-			determined = true;
 		}
 
 		public void RemovePossibility(T possibility){

@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace wfc{
-	class IndeterminationField<T> where T: IComparable<T>{
+	public class IndeterminationField<T>  where T: struct, IConvertible{
 		public bool Ready{
 			get{
 				return fieldInitialized;

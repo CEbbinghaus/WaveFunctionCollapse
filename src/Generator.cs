@@ -18,7 +18,7 @@ namespace wfc{
         }
     }
 
-    public struct GenerationParams<T> where T: IComparable<T>{
+    public struct GenerationParams<T> where T: IConvertible{
         public Dictionary<T, Dictionary<(int x, int y), T[]>> rules;
         public T[] possibilities;
         public Dictionary<T, float> weights;
@@ -36,19 +36,21 @@ namespace wfc{
         }
     }
 
-    public class Generator<T> where T: struct, IComparable<T>{
+    public class Generator<T> where T: struct, IConvertible{
         IndeterminationField<T> field;
         GenerationParams<T> settings;
         Random random;
+        int seed;
         (int width, int height) outputSize;
 
         public Generator(int width, int height, GenerationParams<T> gen){
             field = new IndeterminationField<T>(width, height);
             field.Initialize(gen.possibilities);
             outputSize = (width, height);
-            random = new Random(gen.seed ?? DateTime.UtcNow.Millisecond);
+            seed = gen.seed ?? Environment.TickCount;
+            random = new Random(seed);
             settings = gen;
-            Console.WriteLine("Generator Initialized");
+            Console.WriteLine("Generator Initialized with Seed {0}", seed);
         }
 
         bool isDetermined(){
@@ -61,10 +63,11 @@ namespace wfc{
 
         Indeterminant<T> getLowestEntropy(){
             int possibilityCount = settings.possibilities.Length;
-            Indeterminant<T> lowest = null;
+            Indeterminant<T> lowest = field[random.Next(outputSize.width), random.Next(outputSize.height)];
+
             foreach(var e in field){
                 if(e.Determined)continue;
-                if(lowest == null || e.ScaledEntropy(possibilityCount) - random.NextDouble() / 1000 < 
+                if(lowest == null || lowest.Determined || e.ScaledEntropy(possibilityCount) < // - random.NextDouble() / 10000
                     lowest.ScaledEntropy(possibilityCount))
                     lowest = e;
             }
@@ -97,7 +100,7 @@ namespace wfc{
             element.Determine(tile ?? default(T));
         }
 
-        void Propergate(Indeterminant<T> element){
+        IEnumerable<int> Propergate(Indeterminant<T> element){
             List<Indeterminant<T>> stack = new List<Indeterminant<T>>(){element};
 
             while(stack.Count > 0){
@@ -105,8 +108,9 @@ namespace wfc{
 
                 var pos = current.Position;
 
+                bool changed = false;
 
-                foreach((int x, int y) direction in settings.GetNeighbours(pos, outputSize)){
+                foreach((int x, int y) direction in settings.GetNeighbours(pos, outputSize).Shuffle()){
                     var other = field[(pos.x + direction.x, pos.y + direction.y)];
                     if(other.Determined)continue;
 
@@ -116,18 +120,72 @@ namespace wfc{
                         possibilities = possibilities.Union(tilePossibilities);
                     }
 
-                    if(other.ConstrainPossibilities(possibilities.ToArray()))
+                    if(other.ConstrainPossibilities(possibilities.ToArray())){
                         stack.Add(other);
+                        changed = true;
+                    }
 
                 }
+                if(changed)
+                    yield return 0;
             }
         }
 
-        public T[,] evaulate(){
+        public T[,] evaulate(ref (int, int) start){
+            start = (outputSize.width, outputSize.height);
+            // {
+            //     //var first = field[random.Next(outputSize.width), random.Next(outputSize.height)];
+            //     //var first = field[outputSize.width / 2, outputSize.height / 2];
+            //     //var first = field[outputSize.width - 1, outputSize.height - 1]; //outputSize.height / 2
+            //     var first = field[outputSize.width - 1, 0]; //outputSize.height / 2
+            //     //var first = field[0, 0]; //outputSize.height / 2
+            //     Console.WriteLine("First Collapsed is: ({0}, {1})", first.Position.x, first.Position.y);
+            //     start = first.Position;
+            //     Collapse(first);
+            //     Propergate(first);
+            // }
+
             while(!isDetermined()){
                 Indeterminant<T> toBeCollapsed = getLowestEntropy();
+                if(start == (outputSize.width, outputSize.height))
+                    start = toBeCollapsed.Position;
                 Collapse(toBeCollapsed);
-                Propergate(toBeCollapsed);
+                Propergate(toBeCollapsed).ToArray();
+            }
+
+            //Converting from Field to output
+            T[,] output = new T[outputSize.width, outputSize.height];
+            foreach(var element in field){
+                var pos = element.Position;
+                output[pos.x, pos.y] = element.GetDeterminant;
+            }
+            return output;
+        }
+
+        public T[,] iterate(Func<IndeterminationField<T>, bool?> func){
+            // {
+            //     //var first = field[random.Next(outputSize.width), random.Next(outputSize.height)];
+            //     //var first = field[outputSize.width / 2, outputSize.height / 2];
+            //     //var first = field[outputSize.width - 1, outputSize.height - 1]; //outputSize.height / 2
+            //     var first = field[outputSize.width - 1, 0]; //outputSize.height / 2
+            //     //var first = field[0, 0]; //outputSize.height / 2
+            //     Console.WriteLine("First Collapsed is: ({0}, {1})", first.Position.x, first.Position.y);
+            //     Collapse(first);
+            //     Propergate(first);
+            // }
+            //func(field);
+
+            bool shouldSkip = false;
+            while(!isDetermined()){
+                Indeterminant<T> toBeCollapsed = getLowestEntropy();
+                shouldSkip = false;
+                Collapse(toBeCollapsed);
+                shouldSkip = func(field) ?? false;
+                
+                foreach(var _ in Propergate(toBeCollapsed)){
+                    if(shouldSkip)continue;
+                    shouldSkip = func(field) ?? false;
+                }
             }
 
             //Converting from Field to output

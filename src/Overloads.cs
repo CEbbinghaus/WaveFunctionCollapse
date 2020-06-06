@@ -18,7 +18,7 @@ public static class OverLoads {
         return result;
     }
 
-    public static void Shuffle<T>(this T[] array) {
+    public static T[] Shuffle<T>(this T[] array) {
         Random random = new Random();
         int n = array.Length;
         while (n > 1) {
@@ -27,6 +27,7 @@ public static class OverLoads {
             array[n] = array[k];
             array[k] = temp;
         }
+        return array;
     }
 
     public static T[,] Transpose<T>(this T[,] array) {
