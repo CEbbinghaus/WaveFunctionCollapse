@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace wfc {
-	class IndeterminationField<T> where T : struct, IConvertible {
+	using dir = Vector2;
+
+	public class IndeterminationField<T> where T : struct, IConvertible {
 		public bool Ready {
 			get {
 				return fieldInitialized;
@@ -14,7 +16,7 @@ namespace wfc {
 		bool fieldInitialized = false;
 		int width, height;
 
-		public Indeterminant<T> this [(int x, int y) value] {
+		public Indeterminant<T> this [dir value] {
 			get {
 				return field[value.x, value.y];
 			}
@@ -38,7 +40,7 @@ namespace wfc {
 			fieldInitialized = true;
 		}
 
-		public (int x, int y) ? GetLowestEntropy () {
+		public dir ? GetLowestEntropy () {
 			if (!Ready) return null;
 
 			var lowest = (x: 0, y: 0);

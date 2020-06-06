@@ -3,29 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace wfc {
-	class Indeterminant<T> where T : struct, IConvertible {
+	using Dir = Vector2;
+
+	public class Indeterminant<T> where T : struct, IConvertible {
 		List<T> possibilities;
-		T? determinant;
+		T? determinant = null;
 
 		public T[] Possibilities {
 			get {
 				if (determinant != null)
-					return new T[] { (T)determinant };
+					return new T[] {
+						(T) determinant };
 				return possibilities.ToArray ();
 			}
 		}
 
-		(int x, int y) position;
+		Vector2 position;
 
 		public T GetDeterminant {
 			get {
 				if (determinant == null)
 					throw new Exception ("Indeterminant wasn't collapsed before Field was Finalized");
-				return (T)determinant;
+				return (T) determinant;
 			}
 		}
 
-		public (int x, int y) Position {
+		public Vector2 Position {
 			get {
 				return position;
 			}
@@ -55,7 +58,7 @@ namespace wfc {
 			return Entropy / count;
 		}
 
-		public Indeterminant (T[] possibilities, (int x, int y) pos) {
+		public Indeterminant (T[] possibilities, Vector2 pos) {
 			position = pos;
 			this.possibilities = new List<T> (possibilities);
 		}
@@ -88,7 +91,7 @@ namespace wfc {
 		}
 
 		public override string ToString () {
-			return $"Ø({position.x}, {position.y})[{string.Join(", ", Possibilities)}]";
+			return $"Ø({position.x}, {position.y})[{(Determined ? ((T)determinant).ToString() : string.Join(", ", Possibilities))}]";
 		}
 	}
 }

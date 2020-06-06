@@ -10,10 +10,11 @@
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/build/TestApp.exe",
-            "args": [],
+            "args": ["100", "20", "1"],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
-            "stopAtEntry": false
+            "stopAtEntry": false,
+            
         },
         {
             "name": ".NET Core Attach",

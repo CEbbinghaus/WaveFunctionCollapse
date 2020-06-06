@@ -3,13 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace wfc {
-    using Direction = Tuple<int, int>;
+    using Dir = Vector2;
 
-    using NeighbourFunction = Func < (int, int), (int, int), (int, int) [] >;
+    using NeighbourFunction = Func < Vector2, (int, int), Vector2[] >;
+
+    public abstract class FieldProcessor<T> where T : struct, IConvertible {
+        public abstract T[] GetPossibilities ((int x, int y) center, (int x, int y) direction);
+    }
 
     public static class DefaultParsers {
-        public static (int, int) [] Neighbours ((int x, int y) pos, (int width, int height) size) {
-            List < (int, int) > directions = new List < (int, int) > ();
+        public static Dir[] Neighbours (Dir pos, (int width, int height) size) {
+            List<Dir> directions = new List<Dir> ();
             if (pos.x > 0) directions.Add ((-1, 0));
             if (pos.y > 0) directions.Add ((0, -1));
             if (pos.x < size.width - 1) directions.Add ((1, 0));
@@ -19,15 +23,13 @@ namespace wfc {
     }
 
     public struct GenerationParams<T> where T : IConvertible {
-        public Dictionary < T,
-            Dictionary < (int x, int y),
-            T[] >> rules;
+        public Dictionary<T, Dictionary<Dir, T[]>> rules;
         public T[] possibilities;
         public Dictionary<T, float> weights;
         public int? seed;
         public NeighbourFunction GetNeighbours;
 
-        public static GenerationParams<T> Create (Dictionary < T, Dictionary < (int x, int y), T[] >> rules, T[] possibilities, Dictionary<T, float> weights, int? seed = null, NeighbourFunction neighbourFunc = null) {
+        public static GenerationParams<T> Create (Dictionary<T, Dictionary<Dir, T[]>> rules, T[] possibilities, Dictionary<T, float> weights, int? seed = null, NeighbourFunction neighbourFunc = null) {
             GenerationParams<T> g = new GenerationParams<T> ();
             g.rules = rules;
             g.possibilities = possibilities;
@@ -42,15 +44,17 @@ namespace wfc {
         IndeterminationField<T> field;
         GenerationParams<T> settings;
         Random random;
+        int seed;
         (int width, int height) outputSize;
 
         public Generator (int width, int height, GenerationParams<T> gen) {
             field = new IndeterminationField<T> (width, height);
             field.Initialize (gen.possibilities);
             outputSize = (width, height);
-            random = new Random (gen.seed ?? DateTime.UtcNow.Millisecond);
+            seed = gen.seed ?? Environment.TickCount;
+            random = new Random (seed);
             settings = gen;
-            Console.WriteLine ("Generator Initialized");
+            Console.WriteLine ("Generator Initialized with Seed {0}", seed);
         }
 
         bool isDetermined () {
@@ -63,10 +67,11 @@ namespace wfc {
 
         Indeterminant<T> getLowestEntropy () {
             int possibilityCount = settings.possibilities.Length;
-            Indeterminant<T> lowest = null;
+            Indeterminant<T> lowest = field[random.Next (outputSize.width), random.Next (outputSize.height)];
+
             foreach (var e in field) {
                 if (e.Determined) continue;
-                if (lowest == null || e.ScaledEntropy (possibilityCount) - random.NextDouble () / 1000 <
+                if (lowest == null || lowest.Determined || e.ScaledEntropy (possibilityCount) < // - random.NextDouble() / 10000
                     lowest.ScaledEntropy (possibilityCount))
                     lowest = e;
             }
@@ -99,7 +104,7 @@ namespace wfc {
             element.Determine (tile ?? default (T));
         }
 
-        void Propergate (Indeterminant<T> element) {
+        IEnumerable<int> Propergate (Indeterminant<T> element, bool iterate = false) {
             List<Indeterminant<T>> stack = new List<Indeterminant<T>> () { element };
 
             while (stack.Count > 0) {
@@ -107,7 +112,9 @@ namespace wfc {
 
                 var pos = current.Position;
 
-                foreach ((int x, int y) direction in settings.GetNeighbours (pos, outputSize)) {
+                bool changed = false;
+
+                foreach ((int x, int y) direction in settings.GetNeighbours (pos, outputSize).Shuffle ()) {
                     var other = field[(pos.x + direction.x, pos.y + direction.y)];
                     if (other.Determined) continue;
 
@@ -117,18 +124,50 @@ namespace wfc {
                         possibilities = possibilities.Union (tilePossibilities);
                     }
 
-                    if (other.ConstrainPossibilities (possibilities.ToArray ()))
+                    if (other.ConstrainPossibilities (possibilities.ToArray ())) {
                         stack.Add (other);
+                        changed = true;
+                    }
 
                 }
+
+                if (changed && iterate)
+                    yield return 0;
             }
         }
 
-        public T[, ] evaulate () {
+        public T[, ] evaulate (ref (int, int) start) {
+            start = (outputSize.width, outputSize.height);
+
             while (!isDetermined ()) {
                 Indeterminant<T> toBeCollapsed = getLowestEntropy ();
+                if (start == (outputSize.width, outputSize.height))
+                    start = toBeCollapsed.Position;
                 Collapse (toBeCollapsed);
-                Propergate (toBeCollapsed);
+                foreach(var _ in Propergate(toBeCollapsed));
+            }
+
+            //Converting from Field to output
+            T[, ] output = new T[outputSize.width, outputSize.height];
+            foreach (var element in field) {
+                var pos = element.Position;
+                output[pos.x, pos.y] = element.GetDeterminant;
+            }
+            return output;
+        }
+
+        public T[, ] iterate (Func<IndeterminationField<T>, bool?> func) {
+            bool shouldSkip = false;
+            while (!isDetermined ()) {
+                Indeterminant<T> toBeCollapsed = getLowestEntropy ();
+                shouldSkip = false;
+                Collapse (toBeCollapsed);
+                shouldSkip = func (field) ?? false;
+
+                foreach (var _ in Propergate (toBeCollapsed, true)) {
+                    if (shouldSkip) continue;
+                    shouldSkip = func (field) ?? false;
+                }
             }
 
             //Converting from Field to output
