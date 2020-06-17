@@ -16,6 +16,9 @@ namespace wfc {
 		bool fieldInitialized = false;
 		int width, height;
 
+		public int Width {get{return width;}}
+		public int Height {get{return height;}}
+
 		public Indeterminant<T> this [dir value] {
 			get {
 				return field[value.x, value.y];

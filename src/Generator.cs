@@ -11,7 +11,7 @@ namespace wfc {
         public abstract T[] GetPossibilities ((int x, int y) center, (int x, int y) direction);
     }
 
-    public static class DefaultParsers {
+    public static class DefaultFunctions {
         public static Dir[] Neighbours (Dir pos, (int width, int height) size) {
             List<Dir> directions = new List<Dir> ();
             if (pos.x > 0) directions.Add ((-1, 0));
@@ -35,7 +35,7 @@ namespace wfc {
             g.possibilities = possibilities;
             g.weights = weights;
             g.seed = seed;
-            g.GetNeighbours = neighbourFunc ?? DefaultParsers.Neighbours;
+            g.GetNeighbours = neighbourFunc ?? DefaultFunctions.Neighbours;
             return g;
         }
     }
