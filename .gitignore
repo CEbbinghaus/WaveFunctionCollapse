@@ -1,4 +1,4 @@
 obj/**
 bin/**
-__tmp/**
+**/__tmp/**
 build/**

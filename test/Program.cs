@@ -50,8 +50,8 @@ class Program {
 		return (possibilities, intermediate);
 	}
 
-	static (int x, int y)[] GetDirections((int x, int y) pos, (int width, int height) size){
-		List<(int, int)> directions = new List<(int, int)>();
+	static Vector2[] GetDirections(Vector2 pos, (int width, int height) size){
+		List<Vector2> directions = new List<Vector2>();
 		if(pos.x > 0)directions.Add((-1, 0));
 		if(pos.y > 0)directions.Add((0, -1));
 		if(pos.x < size.width - 1)directions.Add((1, 0));
@@ -65,8 +65,8 @@ class Program {
 		return directions.ToArray();
 	}
 
-	static Dictionary<Tile, Dictionary<(int, int), Tile[]>> ParseRules(Tile[,] arr){
-		Dictionary<Tile, Dictionary<(int, int), List<Tile>>> result = new Dictionary<Tile, Dictionary<(int, int), List<Tile>>>();
+	static Dictionary<Tile, Dictionary<Vector2, Tile[]>> ParseRules(Tile[,] arr){
+		Dictionary<Tile, Dictionary<Vector2, List<Tile>>> result = new Dictionary<Tile, Dictionary<Vector2, List<Tile>>>();
 		var width = arr.GetLength(0);
 		var height = arr.GetLength(1);
 
@@ -75,7 +75,7 @@ class Program {
 
 				Tile id = arr[x, y];
 				if(!result.ContainsKey(id))
-					result.Add(id, new Dictionary<(int, int), List<Tile>>());
+					result.Add(id, new Dictionary<Vector2, List<Tile>>());
 
 				var dict = result[id];
 
@@ -219,9 +219,9 @@ class Program {
 				Console.ForegroundColor = ConsoleColor.White;
 				
 				string read = Console.ReadLine();
-				if(read == "finish")
+				if(read == "finish" || read == "f")
 					finish = true;
-				else if(read == "continue")
+				else if(read == "continue" || read == "c")
 					return true;
 				return null;
 				
